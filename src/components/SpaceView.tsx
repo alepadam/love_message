@@ -17,6 +17,8 @@ interface SpaceViewProps {
   slug: string;
 }
 
+const POLL_INTERVAL_MS = 5000;
+
 export function SpaceView({ slug }: SpaceViewProps) {
   const [role, setRole] = useState<Role | null>(null);
   const [roleResolved, setRoleResolved] = useState(false);
@@ -45,6 +47,15 @@ export function SpaceView({ slug }: SpaceViewProps) {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Poll periodically so the incoming letter and the "opened" status on
+  // your own sent letter update without a manual page refresh. Only runs
+  // once a role is picked, since there's nothing to poll for before that.
+  useEffect(() => {
+    if (!role) return;
+    const interval = window.setInterval(load, POLL_INTERVAL_MS);
+    return () => window.clearInterval(interval);
+  }, [role, load]);
 
   function handlePickRole(picked: Role) {
     setStoredRole(slug, picked);
@@ -101,7 +112,11 @@ export function SpaceView({ slug }: SpaceViewProps) {
       </header>
 
       {incoming ? (
-        <Envelope message={incoming} onOpened={handleOpened} />
+        // Keyed by message id: without this, overwriting the incoming
+        // message would keep the old Envelope instance mounted, so its
+        // "already opened" state would incorrectly carry over to the new
+        // message instead of resealing it.
+        <Envelope key={incoming.id} message={incoming} onOpened={handleOpened} />
       ) : (
         <p className="text-center font-sans text-sm text-ink-soft">
           No letter here yet — nothing&apos;s been sent to you.
@@ -112,6 +127,8 @@ export function SpaceView({ slug }: SpaceViewProps) {
         slug={slug}
         direction={outgoingDirection(role)}
         initialContent={outgoing?.content ?? ""}
+        openedAt={outgoing?.opened_at ?? null}
+        hasSentBefore={Boolean(outgoing)}
         onSent={load}
       />
     </main>

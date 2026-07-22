@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AttachmentUpload } from "@/components/AttachmentUpload";
 import { MAX_MESSAGE_LENGTH } from "@/lib/validation";
 import type { Direction } from "@/lib/types";
@@ -9,6 +9,8 @@ interface MessageComposerProps {
   slug: string;
   direction: Direction;
   initialContent: string;
+  openedAt: string | null;
+  hasSentBefore: boolean;
   onSent: () => void;
 }
 
@@ -16,6 +18,8 @@ export function MessageComposer({
   slug,
   direction,
   initialContent,
+  openedAt,
+  hasSentBefore,
   onSent,
 }: MessageComposerProps) {
   const [content, setContent] = useState(initialContent);
@@ -23,6 +27,15 @@ export function MessageComposer({
   const [fileError, setFileError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
+  const [justSent, setJustSent] = useState(false);
+
+  // Clear the "Sent" confirmation a few seconds after it appears, rather
+  // than leaving it up indefinitely.
+  useEffect(() => {
+    if (!justSent) return;
+    const timeout = window.setTimeout(() => setJustSent(false), 4000);
+    return () => window.clearTimeout(timeout);
+  }, [justSent]);
 
   async function handleSend() {
     if (content.trim().length === 0) {
@@ -31,6 +44,7 @@ export function MessageComposer({
     }
     setSending(true);
     setSendError(null);
+    setJustSent(false);
 
     try {
       let attachmentPath: string | null = null;
@@ -69,6 +83,7 @@ export function MessageComposer({
       }
 
       setFile(null);
+      setJustSent(true);
       onSent();
     } catch (error) {
       setSendError(error instanceof Error ? error.message : "Something went wrong.");
@@ -81,7 +96,14 @@ export function MessageComposer({
 
   return (
     <div className="rounded-sm bg-paper p-6 shadow-md ring-1 ring-black/5 sm:p-8">
-      <h2 className="mb-3 font-display text-lg text-ink">Your letter</h2>
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <h2 className="font-display text-lg text-ink">Your letter</h2>
+        <StatusBadge
+          openedAt={openedAt}
+          justSent={justSent}
+          hasSentBefore={hasSentBefore}
+        />
+      </div>
       <textarea
         value={content}
         onChange={(event) => setContent(event.target.value)}
@@ -118,6 +140,36 @@ export function MessageComposer({
       {sendError && (
         <p className="mt-2 font-sans text-sm text-wax">{sendError}</p>
       )}
+      {justSent && !sendError && (
+        <p className="mt-2 font-sans text-sm text-wax">
+          Sent — sealed and waiting for them.
+        </p>
+      )}
     </div>
   );
+}
+
+interface StatusBadgeProps {
+  openedAt: string | null;
+  justSent: boolean;
+  hasSentBefore: boolean;
+}
+
+function StatusBadge({ openedAt, justSent, hasSentBefore }: StatusBadgeProps) {
+  if (justSent) {
+    return <span className="font-sans text-xs font-medium text-wax">Sent ✓</span>;
+  }
+  if (openedAt) {
+    return (
+      <span className="font-sans text-xs text-ink-soft">
+        Opened {new Date(openedAt).toLocaleString()}
+      </span>
+    );
+  }
+  if (hasSentBefore) {
+    return (
+      <span className="font-sans text-xs text-ink-soft/60">Not yet opened</span>
+    );
+  }
+  return null;
 }
