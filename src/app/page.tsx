@@ -27,9 +27,25 @@ export default function HomePage() {
 
   async function handleCopy() {
     if (!link) return;
-    await navigator.clipboard.writeText(link);
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 2000);
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(link);
+      } else {
+        const textarea = document.createElement("textarea");
+        textarea.value = link;
+        textarea.style.position = "fixed";
+        textarea.style.opacity = "0";
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textarea);
+      }
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Copy silently failed — the link is still visible and selectable manually.
+    }
   }
 
   return (
