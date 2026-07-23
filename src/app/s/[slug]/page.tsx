@@ -1,10 +1,10 @@
-import { SpaceView } from "@/components/SpaceView";
+import { redirect } from "next/navigation";
 
-export default async function SpacePage({
+export default async function SpaceIndexPage({
   params,
 }: {
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  return <SpaceView slug={slug} />;
+  redirect(`/s/${slug}/message`);
 }
