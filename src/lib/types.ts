@@ -15,3 +15,18 @@ export interface SpaceResponse {
   slug: string;
   messages: ClientMessage[];
 }
+
+export interface ClientProfile {
+  id: string;
+  role: "a" | "b";
+  name: string | null;
+  birthday: string | null;
+  avatar_path: string | null;
+  avatar_url: string | null;
+  updated_at: string;
+}
+
+export interface ProfilesResponse {
+  slug: string;
+  profiles: ClientProfile[];
+}

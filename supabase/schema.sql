@@ -25,6 +25,21 @@ create table if not exists messages (
 
 create index if not exists messages_space_id_idx on messages(space_id);
 
+create table if not exists profiles (
+  id uuid primary key default gen_random_uuid(),
+  space_id uuid not null references spaces(id) on delete cascade,
+  role text not null check (role in ('a', 'b')),
+  name text,
+  birthday date,
+  avatar_path text,
+  updated_at timestamptz not null default now(),
+  -- One profile per person per space, same overwrite-on-save pattern
+  -- as messages.
+  unique (space_id, role)
+);
+
+create index if not exists profiles_space_id_idx on profiles(space_id);
+
 -- Row Level Security is enabled but no policies are defined for the
 -- anon/authenticated roles: all reads and writes go through the Next.js
 -- API routes using the service_role key (which bypasses RLS by design).
@@ -33,6 +48,7 @@ create index if not exists messages_space_id_idx on messages(space_id);
 -- you must add explicit policies first.
 alter table spaces enable row level security;
 alter table messages enable row level security;
+alter table profiles enable row level security;
 
 -- Private storage bucket for attachments. Create this via the Supabase
 -- dashboard (Storage → New bucket → name "attachments" → Private) or

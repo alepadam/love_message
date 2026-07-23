@@ -3,7 +3,7 @@ import { nanoid } from "nanoid";
 import { supabaseAdmin } from "@/lib/supabase";
 import { isPlausibleSlug } from "@/lib/slug";
 import { uploadLimiter } from "@/lib/ratelimit";
-import { validateAttachment } from "@/lib/validation";
+import { validateAttachment, validateAvatar } from "@/lib/validation";
 
 const EXTENSION_BY_TYPE: Record<string, string> = {
   "image/jpeg": "jpg",
@@ -15,6 +15,10 @@ export async function POST(request: Request) {
   const formData = await request.formData();
   const slug = formData.get("slug");
   const file = formData.get("file");
+  // "attachment" (message attachments: jpeg/png/pdf) or "avatar"
+  // (profile photos: jpeg/png only). Defaults to "attachment" so
+  // existing callers that don't send this field keep working.
+  const purpose = formData.get("purpose") === "avatar" ? "avatar" : "attachment";
 
   if (typeof slug !== "string" || !isPlausibleSlug(slug)) {
     return NextResponse.json({ error: "Not found." }, { status: 404 });
@@ -32,7 +36,8 @@ export async function POST(request: Request) {
     );
   }
 
-  const validation = validateAttachment(file);
+  const validation =
+    purpose === "avatar" ? validateAvatar(file) : validateAttachment(file);
   if (!validation.ok) {
     return NextResponse.json({ error: validation.error }, { status: 400 });
   }
@@ -48,7 +53,8 @@ export async function POST(request: Request) {
   }
 
   const extension = EXTENSION_BY_TYPE[file.type];
-  const path = `${slug}/${nanoid(12)}.${extension}`;
+  const prefix = purpose === "avatar" ? "avatar" : "attachment";
+  const path = `${slug}/${prefix}-${nanoid(12)}.${extension}`;
   const arrayBuffer = await file.arrayBuffer();
 
   const { error: uploadError } = await supabaseAdmin.storage
