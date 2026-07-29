@@ -40,6 +40,17 @@ create table if not exists profiles (
 
 create index if not exists profiles_space_id_idx on profiles(space_id);
 
+create table if not exists pairing_codes (
+  id uuid primary key default gen_random_uuid(),
+  space_id uuid not null references spaces(id) on delete cascade,
+  code text unique not null,
+  created_at timestamptz not null default now(),
+  expires_at timestamptz not null,
+  redeemed_at timestamptz
+);
+
+create index if not exists pairing_codes_code_idx on pairing_codes(code);
+
 -- Row Level Security is enabled but no policies are defined for the
 -- anon/authenticated roles: all reads and writes go through the Next.js
 -- API routes using the service_role key (which bypasses RLS by design).
@@ -49,6 +60,7 @@ create index if not exists profiles_space_id_idx on profiles(space_id);
 alter table spaces enable row level security;
 alter table messages enable row level security;
 alter table profiles enable row level security;
+alter table pairing_codes enable row level security;
 
 -- Private storage bucket for attachments. Create this via the Supabase
 -- dashboard (Storage → New bucket → name "attachments" → Private) or

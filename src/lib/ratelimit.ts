@@ -32,6 +32,21 @@ export const uploadLimiter = new Ratelimit({
   prefix: "ratelimit:upload",
 });
 
+// POST /api/pairing-code/redeem — the code is only 6 digits (1,000,000
+// possibilities), so unlike the other limiters above, this one IS a
+// meaningful part of the defense, not just a cost guard. Combined with
+// the code's ~10 minute expiry and one-time use, this bounds how many
+// guesses a single IP can make against a live code. It doesn't fully
+// close the door against a distributed attacker spraying guesses from
+// many IPs — that residual risk is accepted here because the code is
+// only ever a temporary hand-off to the real secret (the slug), never
+// the permanent access control itself.
+export const pairingRedeemLimiter = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(10, "5 m"),
+  prefix: "ratelimit:pairing-redeem",
+});
+
 // Best-effort client identifier. Behind Vercel this header is reliably
 // set; falls back to a constant bucket (fail open, shared limit) if
 // ever missing rather than throwing.
