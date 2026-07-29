@@ -4,12 +4,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { isPlausibleSlug } from "@/lib/slug";
 import { uploadLimiter } from "@/lib/ratelimit";
 import { validateAttachment, validateAvatar } from "@/lib/validation";
-
-const EXTENSION_BY_TYPE: Record<string, string> = {
-  "image/jpeg": "jpg",
-  "image/png": "png",
-  "application/pdf": "pdf",
-};
+import { EXTENSION_BY_TYPE } from "@/lib/attachment-types";
 
 export async function POST(request: Request) {
   const formData = await request.formData();

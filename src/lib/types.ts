@@ -30,3 +30,18 @@ export interface ProfilesResponse {
   slug: string;
   profiles: ClientProfile[];
 }
+
+export interface ClientJournalEntry {
+  id: string;
+  direction: Direction;
+  content: string;
+  attachment_path: string | null;
+  attachment_type: string | null;
+  attachment_url: string | null;
+  created_at: string;
+}
+
+export interface JournalResponse {
+  slug: string;
+  entries: ClientJournalEntry[];
+}

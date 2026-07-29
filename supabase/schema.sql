@@ -51,6 +51,23 @@ create table if not exists pairing_codes (
 
 create index if not exists pairing_codes_code_idx on pairing_codes(code);
 
+create table if not exists journal_entries (
+  id uuid primary key default gen_random_uuid(),
+  space_id uuid not null references spaces(id) on delete cascade,
+  direction text not null check (direction in ('a_to_b', 'b_to_a')),
+  content text not null,
+  -- Deliberately a SEPARATE storage object from the corresponding
+  -- messages.attachment_path, copied at send time (see /api/messages).
+  -- Without this, deleting a replaced "current message" attachment
+  -- would break the image on this permanent journal page.
+  attachment_path text,
+  attachment_type text,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists journal_entries_space_id_created_at_idx
+  on journal_entries(space_id, created_at);
+
 -- Row Level Security is enabled but no policies are defined for the
 -- anon/authenticated roles: all reads and writes go through the Next.js
 -- API routes using the service_role key (which bypasses RLS by design).
@@ -61,6 +78,7 @@ alter table spaces enable row level security;
 alter table messages enable row level security;
 alter table profiles enable row level security;
 alter table pairing_codes enable row level security;
+alter table journal_entries enable row level security;
 
 -- Private storage bucket for attachments. Create this via the Supabase
 -- dashboard (Storage → New bucket → name "attachments" → Private) or
