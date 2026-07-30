@@ -51,10 +51,36 @@ export async function GET(
     return NextResponse.json({ error: "Something went wrong." }, { status: 500 });
   }
 
+  const entryIds = (entries ?? []).map((entry) => entry.id);
+  const { data: decorations, error: decorationsError } =
+    entryIds.length > 0
+      ? await supabaseAdmin
+          .from("journal_decorations")
+          .select("id, entry_id, emoji, x, y, created_by, created_at")
+          .in("entry_id", entryIds)
+      : { data: [], error: null };
+
+  if (decorationsError) {
+    // Non-fatal: entries still display without their stickers rather
+    // than failing the whole journal load over a decorations issue.
+    console.error("Failed to load decorations:", decorationsError);
+  }
+
+  const decorationsByEntry = new Map<string, typeof decorations>();
+  for (const decoration of decorations ?? []) {
+    const list = decorationsByEntry.get(decoration.entry_id) ?? [];
+    list.push(decoration);
+    decorationsByEntry.set(decoration.entry_id, list);
+  }
+
   const withSignedUrls = await Promise.all(
     (entries ?? []).map(async (entry) => {
+      const entryDecorations = (decorationsByEntry.get(entry.id) ?? []).map(
+        ({ entry_id: _entryId, ...rest }) => rest
+      );
+
       if (!entry.attachment_path) {
-        return { ...entry, attachment_url: null };
+        return { ...entry, attachment_url: null, decorations: entryDecorations };
       }
       const { data: signed, error: signError } = await supabaseAdmin.storage
         .from("attachments")
@@ -62,9 +88,13 @@ export async function GET(
 
       if (signError) {
         console.error("Failed to sign journal attachment URL:", signError);
-        return { ...entry, attachment_url: null };
+        return { ...entry, attachment_url: null, decorations: entryDecorations };
       }
-      return { ...entry, attachment_url: signed.signedUrl };
+      return {
+        ...entry,
+        attachment_url: signed.signedUrl,
+        decorations: entryDecorations,
+      };
     })
   );
 

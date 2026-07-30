@@ -31,6 +31,15 @@ export interface ProfilesResponse {
   profiles: ClientProfile[];
 }
 
+export interface ClientDecoration {
+  id: string;
+  emoji: string;
+  x: number;
+  y: number;
+  created_by: "a" | "b";
+  created_at: string;
+}
+
 export interface ClientJournalEntry {
   id: string;
   direction: Direction;
@@ -39,6 +48,7 @@ export interface ClientJournalEntry {
   attachment_type: string | null;
   attachment_url: string | null;
   created_at: string;
+  decorations: ClientDecoration[];
 }
 
 export interface JournalResponse {

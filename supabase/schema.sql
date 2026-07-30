@@ -68,6 +68,19 @@ create table if not exists journal_entries (
 create index if not exists journal_entries_space_id_created_at_idx
   on journal_entries(space_id, created_at);
 
+create table if not exists journal_decorations (
+  id uuid primary key default gen_random_uuid(),
+  entry_id uuid not null references journal_entries(id) on delete cascade,
+  emoji text not null,
+  x numeric not null, -- percentage, 0-100 from the left
+  y numeric not null, -- percentage, 0-100 from the top
+  created_by text not null check (created_by in ('a', 'b')),
+  created_at timestamptz not null default now()
+);
+
+create index if not exists journal_decorations_entry_id_idx
+  on journal_decorations(entry_id);
+
 -- Row Level Security is enabled but no policies are defined for the
 -- anon/authenticated roles: all reads and writes go through the Next.js
 -- API routes using the service_role key (which bypasses RLS by design).
@@ -79,6 +92,7 @@ alter table messages enable row level security;
 alter table profiles enable row level security;
 alter table pairing_codes enable row level security;
 alter table journal_entries enable row level security;
+alter table journal_decorations enable row level security;
 
 -- Private storage bucket for attachments. Create this via the Supabase
 -- dashboard (Storage → New bucket → name "attachments" → Private) or
