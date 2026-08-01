@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { setStoredRole } from "@/lib/role";
 
 export function RedeemCodeForm() {
   const router = useRouter();
@@ -29,6 +30,10 @@ export function RedeemCodeForm() {
       if (!response.ok) {
         throw new Error(body.error ?? "Could not use that code.");
       }
+      // Redeeming a code means joining a space someone else already
+      // created, so this device is always the "second person" — this
+      // is what lets us skip the manual role picker for this flow.
+      setStoredRole(body.slug, "b");
       router.push(`/s/${body.slug}/message`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");

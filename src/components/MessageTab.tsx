@@ -4,12 +4,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { EnvelopeModal } from "@/components/EnvelopeModal";
 import { ComposeModal } from "@/components/ComposeModal";
 import { InviteModal } from "@/components/InviteModal";
+import { JoinModal } from "@/components/JoinModal";
 import { Toast } from "@/components/Toast";
 import { useRole } from "@/lib/role-context";
 import { incomingDirection, outgoingDirection } from "@/lib/role";
 import type { SpaceResponse } from "@/lib/types";
 
-const POLL_INTERVAL_MS = 5000;
+const POLL_INTERVAL_MS = 8000;
 const TOAST_DURATION_MS = 2500;
 
 export function MessageTab() {
@@ -20,6 +21,7 @@ export function MessageTab() {
   const [showEnvelopeModal, setShowEnvelopeModal] = useState(false);
   const [showComposeModal, setShowComposeModal] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [showJoinModal, setShowJoinModal] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Tracks which message "version" (id + created_at, so an overwrite
@@ -123,6 +125,13 @@ export function MessageTab() {
         >
           ⛓ Invite
         </button>
+        <button
+          type="button"
+          onClick={() => setShowJoinModal(true)}
+          className="rounded-sm border border-ink/15 px-4 py-1.5 font-sans text-sm text-ink-soft transition-colors hover:border-wax hover:text-wax"
+        >
+          ⊕ Join
+        </button>
       </div>
 
       {outgoing && (
@@ -171,6 +180,8 @@ export function MessageTab() {
       {showInviteModal && (
         <InviteModal slug={slug} onClose={() => setShowInviteModal(false)} />
       )}
+
+      {showJoinModal && <JoinModal onClose={() => setShowJoinModal(false)} />}
 
       <Toast message={toastMessage} />
     </div>
