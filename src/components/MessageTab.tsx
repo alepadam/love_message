@@ -1,18 +1,33 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { Envelope } from "@/components/Envelope";
-import { MessageComposer } from "@/components/MessageComposer";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { EnvelopeModal } from "@/components/EnvelopeModal";
+import { ComposeModal } from "@/components/ComposeModal";
+import { InviteModal } from "@/components/InviteModal";
+import { Toast } from "@/components/Toast";
 import { useRole } from "@/lib/role-context";
 import { incomingDirection, outgoingDirection } from "@/lib/role";
 import type { SpaceResponse } from "@/lib/types";
 
 const POLL_INTERVAL_MS = 5000;
+const TOAST_DURATION_MS = 2500;
 
 export function MessageTab() {
   const { role, slug } = useRole();
   const [data, setData] = useState<SpaceResponse | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+
+  const [showEnvelopeModal, setShowEnvelopeModal] = useState(false);
+  const [showComposeModal, setShowComposeModal] = useState(false);
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Tracks which message "version" (id + created_at, so an overwrite
+  // counts as a new version even though the row id is often reused by
+  // the upsert) we've already auto-popped the envelope for — so a
+  // background poll doesn't re-trigger the popup for the same letter,
+  // but a genuinely new or overwritten letter does.
+  const autoShownKeyRef = useRef<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -32,12 +47,30 @@ export function MessageTab() {
     load();
   }, [load]);
 
-  // Poll periodically so the incoming letter and the "opened" status on
-  // your own sent letter update without a manual page refresh.
   useEffect(() => {
     const interval = window.setInterval(load, POLL_INTERVAL_MS);
     return () => window.clearInterval(interval);
   }, [load]);
+
+  useEffect(() => {
+    if (!toastMessage) return;
+    const timeout = window.setTimeout(() => setToastMessage(null), TOAST_DURATION_MS);
+    return () => window.clearTimeout(timeout);
+  }, [toastMessage]);
+
+  const incoming = data?.messages.find((m) => m.direction === incomingDirection(role));
+  const outgoing = data?.messages.find((m) => m.direction === outgoingDirection(role));
+
+  // Auto-open the envelope popup for a genuinely new unread letter —
+  // but only once per distinct version of it, so it doesn't reappear
+  // on every 5-second poll.
+  useEffect(() => {
+    if (!incoming || incoming.opened_at) return;
+    const key = `${incoming.id}-${incoming.created_at}`;
+    if (autoShownKeyRef.current === key) return;
+    autoShownKeyRef.current = key;
+    setShowEnvelopeModal(true);
+  }, [incoming]);
 
   async function handleOpened(messageId: string) {
     try {
@@ -46,6 +79,12 @@ export function MessageTab() {
       // Non-fatal — the letter is already visually open for this visit;
       // worst case it shows the reveal animation again next time.
     }
+  }
+
+  async function handleComposerSent() {
+    await load();
+    setShowComposeModal(false);
+    setToastMessage("Sent — sealed and waiting for them.");
   }
 
   if (loadError) {
@@ -67,30 +106,73 @@ export function MessageTab() {
     );
   }
 
-  const incoming = data.messages.find((m) => m.direction === incomingDirection(role));
-  const outgoing = data.messages.find((m) => m.direction === outgoingDirection(role));
-
   return (
-    <div className="mx-auto flex max-w-2xl flex-col gap-10 px-6 py-12">
+    <div className="mx-auto flex max-w-2xl flex-col items-center gap-6 px-6 py-12">
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={() => setShowComposeModal(true)}
+          className="rounded-sm border border-wax px-4 py-1.5 font-sans text-sm font-medium text-wax transition-colors hover:bg-wax hover:text-paper"
+        >
+          ✎ Write a letter
+        </button>
+        <button
+          type="button"
+          onClick={() => setShowInviteModal(true)}
+          className="rounded-sm border border-ink/15 px-4 py-1.5 font-sans text-sm text-ink-soft transition-colors hover:border-wax hover:text-wax"
+        >
+          ⛓ Invite
+        </button>
+      </div>
+
+      {outgoing && (
+        <p className="font-sans text-xs text-ink-soft/60">
+          {outgoing.opened_at
+            ? `Opened ${new Date(outgoing.opened_at).toLocaleString()}`
+            : "Not yet opened"}
+        </p>
+      )}
+
       {incoming ? (
-        // Keyed by message id so overwriting the incoming message
-        // correctly reseals the envelope instead of carrying over the
-        // previous message's "already opened" state.
-        <Envelope key={incoming.id} message={incoming} onOpened={handleOpened} />
+        incoming.opened_at && (
+          <button
+            type="button"
+            onClick={() => setShowEnvelopeModal(true)}
+            className="font-sans text-sm text-ink-soft underline decoration-ink-soft/40 underline-offset-2 hover:text-ink"
+          >
+            View their letter again
+          </button>
+        )
       ) : (
         <p className="text-center font-sans text-sm text-ink-soft">
           No letter here yet — nothing&apos;s been sent to you.
         </p>
       )}
 
-      <MessageComposer
-        slug={slug}
-        direction={outgoingDirection(role)}
-        initialContent={outgoing?.content ?? ""}
-        openedAt={outgoing?.opened_at ?? null}
-        hasSentBefore={Boolean(outgoing)}
-        onSent={load}
-      />
+      {showEnvelopeModal && incoming && (
+        <EnvelopeModal
+          key={`${incoming.id}-${incoming.created_at}`}
+          message={incoming}
+          onOpened={handleOpened}
+          onClose={() => setShowEnvelopeModal(false)}
+        />
+      )}
+
+      {showComposeModal && (
+        <ComposeModal
+          slug={slug}
+          direction={outgoingDirection(role)}
+          initialContent={outgoing?.content ?? ""}
+          onClose={() => setShowComposeModal(false)}
+          onSent={handleComposerSent}
+        />
+      )}
+
+      {showInviteModal && (
+        <InviteModal slug={slug} onClose={() => setShowInviteModal(false)} />
+      )}
+
+      <Toast message={toastMessage} />
     </div>
   );
 }

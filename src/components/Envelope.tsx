@@ -27,7 +27,7 @@ export function Envelope({ message, onOpened }: EnvelopeProps) {
 
   if (stage !== "open") {
     return (
-      <div className="flex flex-col items-center justify-center gap-6 py-16">
+      <div className="flex flex-col items-center justify-center gap-6 py-6">
         <button
           type="button"
           onClick={handleOpen}
@@ -43,7 +43,7 @@ export function Envelope({ message, onOpened }: EnvelopeProps) {
             &amp;
           </span>
         </button>
-        <p className="font-sans text-sm text-ink-soft">
+        <p className="font-sans text-sm text-paper/80">
           A letter is waiting. Tap the seal to open it.
         </p>
       </div>
@@ -51,7 +51,7 @@ export function Envelope({ message, onOpened }: EnvelopeProps) {
   }
 
   return (
-    <article className="animate-letter-rise rounded-sm bg-paper p-8 shadow-xl ring-1 ring-black/5 sm:p-10">
+    <article className="animate-letter-rise max-h-[70vh] overflow-y-auto rounded-sm bg-paper p-8 shadow-xl ring-1 ring-black/5 sm:p-10">
       <p className="mb-6 whitespace-pre-wrap font-display text-xl leading-relaxed text-ink sm:text-2xl">
         {message.content}
       </p>
