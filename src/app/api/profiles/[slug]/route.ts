@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { isPlausibleSlug } from "@/lib/slug";
-import { lookupLimiter, getClientIp } from "@/lib/ratelimit";
+import { profileLookupLimiter, getClientIp } from "@/lib/ratelimit";
 
 const SIGNED_URL_TTL_SECONDS = 60 * 10; // 10 minutes — plenty for a page view
 
@@ -10,7 +10,7 @@ export async function GET(
   { params }: { params: Promise<{ slug: string }> }
 ) {
   const ip = getClientIp(request);
-  const { success } = await lookupLimiter.limit(ip);
+  const { success } = await profileLookupLimiter.limit(ip);
   if (!success) {
     return NextResponse.json(
       { error: "Too many requests. Please slow down." },

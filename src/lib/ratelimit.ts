@@ -11,11 +11,34 @@ import { Redis } from "@upstash/redis";
 // (see lib/slug.ts). Both matter, but don't conflate them.
 const redis = Redis.fromEnv();
 
-// GET /api/space/[slug] — guards against slug brute-forcing scripts.
-export const lookupLimiter = new Ratelimit({
+// GET /api/space/[slug] — the Message tab polls this every ~8 seconds
+// while open, so this needs real headroom: ~7-8 requests/minute just
+// from one tab being open, times two people, potentially sharing one
+// IP if they're on the same network/NAT. 60/min comfortably covers
+// that plus normal tab-switching, while still making scripted
+// slug-brute-forcing impractically slow.
+export const spaceLookupLimiter = new Ratelimit({
   redis,
-  limiter: Ratelimit.slidingWindow(20, "1 m"),
-  prefix: "ratelimit:lookup",
+  limiter: Ratelimit.slidingWindow(60, "1 m"),
+  prefix: "ratelimit:lookup-space",
+});
+
+// GET /api/profiles/[slug] — only fetched on navigating to Account,
+// not polled continuously, so a smaller budget is fine. Kept as its
+// own limiter (not shared with space lookups) so browsing Account
+// doesn't eat into the Message tab's polling budget, or vice versa.
+export const profileLookupLimiter = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(30, "1 m"),
+  prefix: "ratelimit:lookup-profile",
+});
+
+// GET /api/journal/[slug] — same reasoning as profiles: fetched on
+// navigation, not polled, own independent budget.
+export const journalLookupLimiter = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(30, "1 m"),
+  prefix: "ratelimit:lookup-journal",
 });
 
 // POST /api/messages — guards against spam-overwriting a space's message.
