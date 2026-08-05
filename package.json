@@ -24,7 +24,7 @@
     "nanoid": "^5.0.7",
     "next": "15.5.21",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1",
+    "react-dom": "^19.2.8",
     "react-pageflip": "^2.0.3",
     "server-only": "^0.0.1"
   },
@@ -32,7 +32,7 @@
     "@playwright/test": "^1.61.1",
     "@types/node": "^20.16.10",
     "@types/react": "^18.3.10",
-    "@types/react-dom": "^18.3.0",
+    "@types/react-dom": "^19.2.4",
     "@typescript-eslint/eslint-plugin": "^8.8.0",
     "@typescript-eslint/parser": "^8.8.0",
     "autoprefixer": "^10.4.20",
